@@ -74,7 +74,7 @@ function generate(iob, currenttemp, glucose, profile, autosens = null, meal = nu
     // Dynamic ISF
     if (profile.useNewFormula) {
         dynisf(profile, autosens_data, dynamicVariables, glucose);
-    } else { console.log("Dynamic ISF disabled in settings."); }
+    }
     
     // If ignoring flat CGM errors, circumvent also the Oref0 error
     if (dynamicVariables.disableCGMError) {
@@ -87,11 +87,17 @@ function generate(iob, currenttemp, glucose, profile, autosens = null, meal = nu
     }
     var glucose_status = freeaps_glucoseGetLast(glucose);
     
+    // In case Basal Rate been set in midleware
+    if (profile.set_basal && profile.basal_rate) {
+        console.log("Basal Rate set by middleware to " + profile.basal_rate + " U/h.");
+    }
+    
     return freeaps_determineBasal(glucose_status, currenttemp, iob, profile, autosens_data, meal_data, freeaps_basalSetTemp, microbolusAllowed, reservoir_data, clock);
 }
 
 // The Dynamic ISF layer
 function dynisf(profile, autosens_data, dynamicVariables, glucose) {
+    console.log("Starting dynamic ISF layer.");
     var dynISFenabled = true;
     // One of two exercise settings (they share the same purpose).
     var exerciseSetting = false;
@@ -157,7 +163,7 @@ function dynisf(profile, autosens_data, dynamicVariables, glucose) {
     }
 
     // Account for TDD of insulin. Compare last 2 hours with total data (up to 10 days)
-    const tdd_factor = weighted_average / average14; // weighted average TDD / total data average TDD
+    var tdd_factor = weighted_average / average14; // weighted average TDD / total data average TDD
     
     const enable_sigmoid = profile.sigmoid;
     var newRatio = 1;
@@ -201,7 +207,7 @@ function dynisf(profile, autosens_data, dynamicVariables, glucose) {
         console.log(", Dynamic ISF limited by autosens_max setting to: " + autosens_max + ", from: " + newRatio);
         newRatio = autosens_max;
     } else if (newRatio < autosens_min) {
-        console.log("Dynamic ISF limited by autosens_min setting to: " + autosens_min + ", from: " + newRatio);
+        console.log(", Dynamic ISF limited by autosens_min setting to: " + autosens_min + ", from: " + newRatio);
         newRatio = autosens_min;
     }
 
@@ -223,7 +229,7 @@ function dynisf(profile, autosens_data, dynamicVariables, glucose) {
     // Basal Adjustment
     if (profile.tddAdjBasal && dynISFenabled) {
         profile.current_basal *= tdd_factor;
-        console.log("Dynamic ISF. Basal adjusted with TDD factor: " + round(tdd_factor, 1));
+        console.log("Dynamic ISF. Basal adjusted with TDD factor: " + round(tdd_factor, 2));
     }
 }
 
